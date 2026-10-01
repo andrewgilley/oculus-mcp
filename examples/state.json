@@ -1,0 +1,21 @@
+{
+  "projects": [{"repository": "andrewgilley/oculus.nvim", "provider": "github"}],
+  "saved_items": [{
+    "key": "demo:issue:42",
+    "source": {"kind": "project", "provider": "github", "repository": "andrewgilley/oculus.nvim"},
+    "event": {
+      "type": "IssuesEvent",
+      "repo": {"name": "andrewgilley/oculus.nvim"},
+      "created_at": "2026-10-01T12:00:00Z",
+      "payload": {"issue": {"number": 42, "title": "Synthetic fixture: review context export", "html_url": "https://github.com/andrewgilley/oculus.nvim/issues/42"}}
+    }
+  }],
+  "inspect_overviews": {
+    "github:andrewgilley/oculus.nvim:issue:42": {
+      "explanation": "Synthetic cached explanation for a demo; no real issue was inspected.",
+      "explanation_model": "demo",
+      "locations": [{"path": "lua/oculus/inspect/overview.lua", "line": 1, "reason": "Synthetic suggested location."}],
+      "patch_model": "demo"
+    }
+  }
+}

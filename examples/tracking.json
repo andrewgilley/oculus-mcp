@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "projects": [
+    {"name": "Oculus", "children": [
+      {"repository": "andrewgilley/oculus.nvim", "provider": "github", "name": "Neovim"},
+      {"repository": "andrewgilley/oculus-omarchy", "provider": "github", "name": "Omarchy"}
+    ]},
+    {"repository": "forgejo/forgejo", "provider": "codeberg"}
+  ],
+  "users": []
+}

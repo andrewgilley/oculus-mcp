@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "oculus",
+  "version": "0.1.0",
+  "description": "Read your Oculus tracked projects, saved activity, and cached inspection context.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Oculus",
+        "shortDescription": "Personal project and review context from Oculus"
+      }
+    }
+  }
+}

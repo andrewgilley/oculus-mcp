@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oculus-mcp"
+version = "0.1.0"
+description = "A local, read-only MCP adapter for Oculus project and review context"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "Andrew Gilley"}]
+dependencies = ["mcp>=1.30,<2"]
+
+[project.scripts]
+oculus-mcp = "oculus_mcp.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oculus_mcp"]
