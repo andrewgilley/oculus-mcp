@@ -13,6 +13,8 @@ A working, read-only MCP skeleton for [oculus.nvim](https://github.com/andrewgil
 
 All tools return structured outputs with schemas and read-only annotations. Lists support `offset` and `limit` (maximum 50). Files are reread on each request. Unknown state fields, tokens, raw event payloads, and telemetry are excluded from results.
 
+Two read-only MCP resources provide Slack provisioning references: `oculus://slack/workspace-creation` and `oculus://slack/group-creation`. They give the Slack method names, required scopes, JSON field names, and example payloads for an Oculus organization, channel, and @mention user group. Actual organization-specific plans live behind Oculus Web's authenticated `GET /api/organizations/:id/slack-plan` endpoint. The local MCP server does not expose private organization records, hold Slack tokens, or create Slack objects.
+
 Inspection context is **cached AI output**, possibly stale. Oculus persists explanations and suggested locations in `inspect_overviews`; that cache is not a snapshot of live buffers, complete diffs, or review threads. The adapter does not fetch forge APIs, execute commands from tool arguments, create worktrees, open editors, or modify Oculus state.
 
 ## Run the synthetic demo

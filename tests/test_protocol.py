@@ -1,5 +1,6 @@
 """Exercise the real MCP SDK client/server over both supported transports."""
 import asyncio
+import json
 import os
 from pathlib import Path
 import socket
@@ -46,6 +47,17 @@ async def exercise(session):
     assert invalid.isError
     missing = await session.call_tool("get_inspection_context", {"inspection_id": "../secret"})
     assert missing.isError
+    resources = (await session.list_resources()).resources
+    assert {str(resource.uri) for resource in resources} == {
+        "oculus://slack/workspace-creation", "oculus://slack/group-creation"}
+    workspace = json.loads((await session.read_resource("oculus://slack/workspace-creation")).contents[0].text)
+    assert workspace["method"] == "admin.teams.create"
+    assert set(workspace["bodyExample"]) == {
+        "team_domain", "team_name", "team_description", "team_discoverability"}
+    group = json.loads((await session.read_resource("oculus://slack/group-creation")).contents[0].text)
+    assert [step["method"] for step in group["steps"]] == [
+        "conversations.create", "usergroups.create", "usergroups.users.update"]
+    assert group["steps"][1]["bodyExample"]["channels"] == "C12345678"
 
 
 def test_stdio_roundtrip():

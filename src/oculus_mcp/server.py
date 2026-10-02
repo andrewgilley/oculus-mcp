@@ -10,6 +10,7 @@ from pydantic import Field
 
 from .backend import FileBackend
 from .models import InspectionContext, InspectionsPage, ProjectsPage, SavedItemsPage
+from .slack_resources import group_creation_resource, workspace_creation_resource
 
 Offset = Annotated[int, Field(ge=0)]
 Limit = Annotated[int, Field(ge=1, le=50)]
@@ -44,6 +45,18 @@ def create_server(backend: FileBackend, port=8787):
     def get_inspection_context(inspection_id: InspectionId) -> InspectionContext:
         """Read a cached AI explanation and up to three suggested patch locations by exact ID."""
         return backend.get_inspection_context(inspection_id)
+
+    @server.resource("oculus://slack/workspace-creation", mime_type="application/json",
+                     title="Slack workspace creation data",
+                     description="Slack Enterprise workspace fields for an Oculus organization.")
+    def slack_workspace_creation() -> str:
+        return workspace_creation_resource()
+
+    @server.resource("oculus://slack/group-creation", mime_type="application/json",
+                     title="Slack channel and user group creation data",
+                     description="Ordered Slack payloads for an Oculus group.")
+    def slack_group_creation() -> str:
+        return group_creation_resource()
 
     return server
 
