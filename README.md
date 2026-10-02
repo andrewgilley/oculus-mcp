@@ -1,6 +1,6 @@
 # Oculus MCP
 
-A working, read-only MCP skeleton for [oculus.nvim](https://github.com/andrewgilley/oculus.nvim) and its future ChatGPT/Codex plugin. It uses the official Python MCP SDK and reads Oculus's existing JSON files without requiring Neovim to be running.
+A working MCP adapter for [oculus.nvim](https://github.com/andrewgilley/oculus.nvim) and Oculus Web. It reads Oculus's existing JSON files without requiring Neovim to be running and can create private web workflows using a one-time account code.
 
 ## Current capabilities
 
@@ -10,12 +10,27 @@ A working, read-only MCP skeleton for [oculus.nvim](https://github.com/andrewgil
 | `list_saved_items` | Saved activity metadata in Oculus's saved order |
 | `list_inspections` | IDs of persisted inspection overviews |
 | `get_inspection_context` | Cached AI explanation and up to three suggested patch locations |
+| `list_web_workflow_sectors` | Available Oculus Web sectors and slugs |
+| `create_web_workflow` | Create an account-private web dashboard from a user-supplied workflow description and one-time code |
 
-All tools return structured outputs with schemas and read-only annotations. Lists support `offset` and `limit` (maximum 50). Files are reread on each request. Unknown state fields, tokens, raw event payloads, and telemetry are excluded from results.
+Tools return structured outputs with schemas; `create_web_workflow` is annotated as a write action. Local data lists support `offset` and `limit` (maximum 50). Files are reread on each request. Unknown state fields, tokens, raw event payloads, and telemetry are excluded from results.
 
 Two read-only MCP resources provide Slack provisioning references: `oculus://slack/workspace-creation` and `oculus://slack/group-creation`. They give the Slack method names, required scopes, JSON field names, and example payloads for an Oculus organization, channel, and @mention user group. Actual organization-specific plans live behind Oculus Web's authenticated `GET /api/organizations/:id/slack-plan` endpoint. The local MCP server does not expose private organization records, hold Slack tokens, or create Slack objects.
 
-Inspection context is **cached AI output**, possibly stale. Oculus persists explanations and suggested locations in `inspect_overviews`; that cache is not a snapshot of live buffers, complete diffs, or review threads. The adapter does not fetch forge APIs, execute commands from tool arguments, create worktrees, open editors, or modify Oculus state.
+Inspection context is **cached AI output**, possibly stale. Oculus persists explanations and suggested locations in `inspect_overviews`; that cache is not a snapshot of live buffers, complete diffs, or review threads. The adapter does not fetch forge APIs, execute commands from tool arguments, create worktrees, open editors, or modify local Oculus state.
+
+## Create a web workflow
+
+Sign in to Oculus Web, open `/workflows`, and generate a one-time setup code. Tell the MCP client the code and describe your desired workflow, including its activity, goal, steps, and any links you want included. The client calls `create_web_workflow` and returns the dashboard URL. A workflow is private to the account that issued the code. The code expires after ten minutes and is consumed once; generating a new code invalidates the previous one. Resource URLs should come from the user or a verified source, not be invented.
+
+Configure the **server process** with the web API origin before starting it:
+
+```sh
+export OCULUS_WEB_API_URL=http://127.0.0.1:3001
+uv run oculus-mcp
+```
+
+The configured origin must use HTTPS, or loopback HTTP for local development. The URL is fixed in server configuration rather than supplied through tool arguments. The web API must be reachable from the MCP server host. Public plugin distribution still requires a proper per-user OAuth connection; this one-time setup flow is for the current developer setup.
 
 ## Run the synthetic demo
 
@@ -74,7 +89,7 @@ uv tool install /absolute/path/to/oculus-mcp
 
 Ensure `oculus-mcp` is on the plugin host's PATH, and configure the file paths in its environment or in `mcp.json` arguments. This is a development package, not a published OpenAI directory plugin. Availability of local package installation varies by client.
 
-The HTTP mode binds only to `127.0.0.1`. It has no OAuth or user isolation and must not be forwarded to a public endpoint with real Oculus data. A public ChatGPT plugin needs an authenticated, stable HTTPS service and per-user storage. Secure MCP Tunnel is a possible private developer-mode route, but does not alone satisfy public submission requirements.
+The HTTP mode binds only to `127.0.0.1`. Local review data has no OAuth isolation and should not be forwarded to a public endpoint with real Oculus data. The one-time workflow code authorizes creation for a specific web account, but does not authenticate the other MCP read tools. A public ChatGPT plugin needs an authenticated, stable HTTPS service. Secure MCP Tunnel is a possible private developer-mode route, but does not alone satisfy public submission requirements.
 
 ## Architecture and next steps
 

@@ -6,6 +6,8 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 
 import httpx
 from mcp import ClientSession, StdioServerParameters
@@ -30,8 +32,14 @@ async def exercise(session):
     await session.initialize()
     tools = (await session.list_tools()).tools
     assert {tool.name for tool in tools} == {
-        "list_tracked_projects", "list_saved_items", "list_inspections", "get_inspection_context"}
-    assert all(tool.annotations.readOnlyHint and not tool.annotations.openWorldHint for tool in tools)
+        "list_tracked_projects", "list_saved_items", "list_inspections", "get_inspection_context",
+        "list_web_workflow_sectors", "create_web_workflow"}
+    assert all(tool.annotations.readOnlyHint and not tool.annotations.openWorldHint
+               for tool in tools if tool.name != "create_web_workflow")
+    write_tool = next(tool for tool in tools if tool.name == "create_web_workflow")
+    assert not write_tool.annotations.readOnlyHint
+    assert not write_tool.annotations.destructiveHint
+    assert not write_tool.annotations.idempotentHint
     assert all(tool.outputSchema for tool in tools)
     projects = await session.call_tool("list_tracked_projects", {"limit": 2})
     assert not projects.isError
@@ -100,3 +108,63 @@ def test_http_roundtrip():
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+def test_workflow_creation_tool_sends_account_code_to_configured_web_api():
+    seen = {}
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_POST(self):
+            assert self.path == "/api/workflow-setup/import"
+            seen["authorization"] = self.headers["Authorization"]
+            seen["workflow"] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            result = {"id": "workflow-1", "title": seen["workflow"]["title"],
+                      "webUrl": "http://localhost:3000/workflows/workflow-1"}
+            payload = json.dumps(result).encode()
+            self.send_response(201)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def do_GET(self):
+            assert self.path == "/api/workflow-setup/sectors"
+            payload = json.dumps([{"id": "sector-1", "slug": "personal-pursuits",
+                                   "name": "Personal pursuits", "description": "Private"}]).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    code = "A" * 43
+    workflow = {
+        "title": "Explore research", "activity": "research", "goal": "Learn the field",
+        "steps": [{"title": "Collect sources", "description": "Read primary data"}],
+        "resources": [{"kind": "data", "title": "Source data", "url": "https://example.com/data"}],
+    }
+    async def run():
+        env = {**environment(), "OCULUS_WEB_API_URL": f"http://127.0.0.1:{server.server_port}"}
+        async with asyncio.timeout(15):
+            params = StdioServerParameters(command=sys.executable, args=ARGS, env=env)
+            async with stdio_client(params) as (reader, writer):
+                async with ClientSession(reader, writer) as session:
+                    await session.initialize()
+                    sectors = await session.call_tool("list_web_workflow_sectors", {})
+                    assert not sectors.isError
+                    created = await session.call_tool("create_web_workflow", {"setup_code": code, "workflow": workflow})
+                    assert not created.isError
+                    assert created.structuredContent["webUrl"].endswith("/workflows/workflow-1")
+    try:
+        asyncio.run(run())
+        assert seen["authorization"] == f"Bearer {code}"
+        assert seen["workflow"]["title"] == workflow["title"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
